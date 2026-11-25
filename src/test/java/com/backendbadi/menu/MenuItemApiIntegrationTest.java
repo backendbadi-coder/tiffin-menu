@@ -7,13 +7,14 @@ import com.backendbadi.menu.model.MenuItemResponse;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.client.RestTestClient;
 
 /**
  * Starts the app on a random port and calls it over real HTTP.
@@ -24,42 +25,57 @@ import org.springframework.test.context.TestPropertySource;
  * Uses its own in-memory database so the items created here do not affect other test classes.
  */
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@AutoConfigureTestRestTemplate
+@AutoConfigureRestTestClient
 @TestPropertySource(properties = "spring.datasource.url=jdbc:h2:mem:api-test-db")
 class MenuItemApiIntegrationTest {
 
     @Autowired
-    private TestRestTemplate restTemplate;
+    private RestTestClient client;
 
     @Test
     void readsASampleItemOverHttp() {
-        ResponseEntity<MenuItemResponse> response =
-                restTemplate.getForEntity("/api/menu-items/1", MenuItemResponse.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().name()).isEqualTo("Idli");
+        RestTestClient.BodySpec<MenuItemResponse, ?> response =
+            client.get().uri("/api/menu-items/1")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(MenuItemResponse.class)
+                .value(item -> assertThat(item.name()).isEqualTo("Idli"));
     }
 
     @Test
     void createsAndReadsBackAnItem() {
-        ResponseEntity<MenuItemResponse> created = restTemplate.postForEntity(
-                "/api/menu-items", new MenuItemRequest("Mysore Bonda", 40, true), MenuItemResponse.class);
+        MenuItemResponse created = client.post()
+            .uri("/api/menu-items").contentType(MediaType.APPLICATION_JSON)
+            .body(new MenuItemRequest("Mysore Bonda", 40, true))
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(MenuItemResponse.class)
+            .returnResult()
+            .getResponseBody();
 
-        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(created.getBody()).isNotNull();
-        Long id = created.getBody().id();
+        assertThat(created).isNotNull();
+        Long id = created.id();
 
-        ResponseEntity<MenuItemResponse> fetched =
-                restTemplate.getForEntity("/api/menu-items/" + id, MenuItemResponse.class);
-        assertThat(fetched.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(fetched.getBody().name()).isEqualTo("Mysore Bonda");
+        MenuItemResponse fetched =
+                client.get().uri("/api/menu-items/" + id)
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(MenuItemResponse.class)
+                    .returnResult()
+                    .getResponseBody();
+        assertThat(fetched).isNotNull();
+        assertThat(fetched.name()).isEqualTo("Mysore Bonda");
     }
 
     @Test
     void unknownIdReturns404() {
-        ResponseEntity<String> response = restTemplate.getForEntity("/api/menu-items/999", String.class);
+        String response = client.get().uri("/api/menu-items/999")
+            .exchange()
+            .expectStatus().isNotFound()
+            .expectBody(String.class)
+            .returnResult()
+            .getResponseBody();
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response).isNotBlank();
     }
 }
