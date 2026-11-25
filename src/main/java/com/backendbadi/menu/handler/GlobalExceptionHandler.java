@@ -1,9 +1,11 @@
 package com.backendbadi.menu.handler;
 
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.backendbadi.menu.exception.MenuItemNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.validation.FieldError;
@@ -23,14 +25,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MenuItemNotFoundException.class)
-    public ProblemDetail handleNotFound(MenuItemNotFoundException ex) {
+    public ProblemDetail handleNotFound(MenuItemNotFoundException ex, HttpServletRequest request) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Menu item not found");
+        problem.setInstance(URI.create(request.getRequestURI()));
         return problem;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+    public ProblemDetail handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         Map<String, String> errors = new LinkedHashMap<>();
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             errors.putIfAbsent(error.getField(), error.getDefaultMessage());
@@ -38,6 +41,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
         problem.setTitle("Invalid menu item");
         problem.setProperty("errors", errors);
+        problem.setInstance(URI.create(request.getRequestURI()));
         return problem;
     }
 }
