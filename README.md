@@ -56,6 +56,18 @@ src/test/java/com/backendbadi/menu
 5. Run `MenuApplication`. You should see `Tomcat started on port 8080`.
 6. Open http://localhost:8080/api/menu-items. You should see 5 items.
 
+## Run with Docker
+Don't have Docker yet? See [DOCKER-INSTALLATION-GUIDE.md](DOCKER-INSTALLATION-GUIDE.md).
+
+```bash
+cp .env.example .env        # then set your own DB_PASSWORD
+docker compose up -d --build
+curl http://127.0.0.1:8080/api/menu-items
+```
+- Runs the app with the `docker` profile and PostgreSQL 18.
+- Data is kept in the `db-data` volume. Reset with `docker compose down -v`.
+- Ports are bound to 127.0.0.1 only, because the MCP endpoint `/mcp` has no authentication.
+
 ### From the terminal
 ```bash
 mvn spring-boot:run      # start the app
