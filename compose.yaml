@@ -1,0 +1,36 @@
+name: tiffin-menu
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: tiffin
+      POSTGRES_USER: ${DB_USER:-tiffin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql                      # PostgreSQL 18+ path
+      - ./docker/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"                            # optional: lets you connect from IntelliJ/DBeaver
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    image: backendbadi/tiffin-menu:1.0.0
+    depends_on:
+      db:
+        condition: service_healthy                       # wait until postgres really accepts connections
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/tiffin
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-tiffin}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:8080:8080"                            # only this computer (MCP endpoint has no auth)
+
+volumes:
+  db-data:
