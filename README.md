@@ -1,6 +1,6 @@
 # Tiffin Menu API: Spring Boot 4.2 / Java 25
 
-A small, complete CRUD REST API for tiffin menu items (Idli, Dosa, Vada…), built with **Spring Boot 4.2** and **Java 25**.
+A small, complete CRUD REST API for tiffin menu items (Idli, Dosa, Vada…), with an MCP tool server, built with **Spring Boot 4.2** and **Java 25**.
 Made for the **Backend Badi** YouTube channel (Java, Spring Boot & Kotlin in Telugu).
 
 | | |
@@ -9,7 +9,8 @@ Made for the **Backend Badi** YouTube channel (Java, Spring Boot & Kotlin in Tel
 | Java | **25** |
 | Build | Maven |
 | Database | H2 in-memory (data resets on every restart) |
-| Tests | 11 (MockMvc + real HTTP with RestTestClient) |
+| MCP | Spring AI 2.1, Streamable HTTP at `/mcp` |
+| Tests | REST API + MCP tools |
 
 ---
 
@@ -25,7 +26,8 @@ src/main/java/com/backendbadi/menu
 ├── model/MenuItemRequest.java              record: request body + validation
 ├── model/MenuItemResponse.java             record: response body
 ├── exception/MenuItemNotFoundException.java
-└── handler/GlobalExceptionHandler.java     errors as ProblemDetail (RFC 9457)
+├── handler/GlobalExceptionHandler.java     errors as ProblemDetail (RFC 9457)
+└── tool/MenuMcpTools.java                  Spring AI MCP tools
 
 src/main/resources
 ├── application.properties
@@ -33,7 +35,8 @@ src/main/resources
 
 src/test/java/com/backendbadi/menu
 ├── MenuItemControllerTest.java             8 tests: MockMvc (@SpringBootTest + @AutoConfigureMockMvc)
-└── MenuItemApiIntegrationTest.java         3 tests: real HTTP with RestTestClient
+├── MenuItemApiIntegrationTest.java         3 tests: real HTTP with RestTestClient
+└── MenuMcpToolsTest.java                   5 tests: MCP tool behavior
 ```
 
 ---
@@ -56,7 +59,7 @@ src/test/java/com/backendbadi/menu
 ### From the terminal
 ```bash
 mvn spring-boot:run      # start the app
-mvn clean verify         # build + run all 11 tests
+mvn clean verify         # build + run all REST and MCP tests
 ```
 
 ---
@@ -121,7 +124,58 @@ Try: `SELECT * FROM MENU_ITEMS;`
 
 ---
 
-## 4. Spring Boot 4.x notes (good to know)
+## 4. MCP server
+
+This application exposes the tiffin menu as tools for MCP-compatible AI clients using Spring AI's WebMVC MCP server starter.
+
+- Endpoint: `http://127.0.0.1:8080/mcp`
+- Transport: Streamable HTTP
+- Server name: `tiffin-menu-mcp`
+- Server version: `1.0.0`
+- Prices: Indian rupees
+
+### Available tools
+
+| Tool | Purpose | Type |
+|---|---|---|
+| `get_menu` | Get all menu items, optionally only items available today | Read-only |
+| `find_items_under_price` | Find available items at or below a maximum price, sorted cheapest first | Read-only |
+| `get_menu_item` | Get one menu item by ID | Read-only |
+| `add_menu_item` | Add a new menu item (name and price) | Mutating |
+| `set_item_availability` | Mark an item available or sold out | Mutating |
+
+The MCP tools are implemented in `MenuMcpTools` and call the existing `MenuItemService`, so REST and MCP clients use the same business logic and H2 database.
+
+### MCP configuration
+
+The server is configured in `application.properties`:
+
+```properties
+spring.ai.mcp.server.name=tiffin-menu-mcp
+spring.ai.mcp.server.version=1.0.0
+spring.ai.mcp.server.protocol=STREAMABLE
+spring.ai.mcp.server.type=SYNC
+server.address=127.0.0.1
+```
+
+Example MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "tiffin-menu": {
+      "url": "http://127.0.0.1:8080/mcp",
+      "type": "streamableHttp"
+    }
+  }
+}
+```
+
+The endpoint is intentionally bound to localhost and has no authentication. It should only be run locally or behind authentication and network controls in other environments.
+
+---
+
+## 5. Spring Boot 4.x notes (good to know)
 - The web starter is **`spring-boot-starter-webmvc`** (it was `spring-boot-starter-web` in Boot 2/3).
 - Test starters are **per technology**: `spring-boot-starter-webmvc-test` (it brings JUnit, AssertJ, Mockito and MockMvc).
 - `@SpringBootTest` no longer configures `MockMvc` by itself, so **`@AutoConfigureMockMvc`** is required.
@@ -132,7 +186,7 @@ Try: `SELECT * FROM MENU_ITEMS;`
 
 ---
 
-## 5. Version history
+## 6. Version history
 
 | Version | Commit | What changed |
 |---|---|---|
@@ -149,6 +203,7 @@ git checkout 86e0686
 
 ---
 
-## 6. Watch the videos
+## 7. Watch the videos
 📺 **Backend Badi** on YouTube: Spring Boot, Java & Kotlin in Telugu
 - Upgrade Spring Boot 4.1 → 4.2: *[Watch this YouTube video](https://youtu.be/k3eMzRon5o0)*, with the written guide in [UPGRADE-4.1-to-4.2](UPGRADE-4.1-to-4.2.md)
+- MCP tools in Spring Boot 4.2: *[Watch this YouTube video](https://youtu.be/NHk0atzFBzo)*, with the written guide in [MCP-IMPLEMENTATION-PLAN](MCP-IMPLEMENTATION-PLAN.md)

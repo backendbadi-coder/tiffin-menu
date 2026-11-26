@@ -20,6 +20,7 @@
 
     <properties>
         <java.version>25</java.version>
+        <spring-ai.version>2.1.0</spring-ai.version>
     </properties>
 
     <dependencies>
@@ -60,6 +61,12 @@
             <artifactId>spring-boot-h2console</artifactId>
         </dependency>
 
+        <!-- MCP server over HTTP for Spring MVC apps (Streamable HTTP, endpoint /mcp) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+        </dependency>
+
         <!-- ===== Tests ===== -->
         <!-- MockMvc + JUnit + AssertJ + Mockito (brings spring-boot-starter-test with it) -->
         <dependency>
@@ -75,7 +82,17 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <build>
         <plugins>
             <plugin>
