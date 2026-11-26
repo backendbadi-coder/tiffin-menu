@@ -24,8 +24,8 @@ public class MenuItemService {
     @Transactional(readOnly = true)
     public List<MenuItemResponse> findAll() {
         return repository.findAll(Sort.by("id")).stream()
-                .map(MenuItemResponse::from)
-                .toList();
+            .map(MenuItemResponse::from)
+            .toList();
     }
 
     @Transactional(readOnly = true)
@@ -52,5 +52,22 @@ public class MenuItemService {
 
     private MenuItem getItem(Long id) {
         return repository.findById(id).orElseThrow(() -> new MenuItemNotFoundException(id));
+    }
+
+    /** Available items at or below a price, cheapest first. */
+    @Transactional(readOnly = true)
+    public List<MenuItemResponse> findAvailableUnderPrice(int maxPrice) {
+        return repository.findAll(Sort.by("price")).stream()
+            .filter(MenuItem::isAvailable)
+            .filter(item -> item.getPrice() <= maxPrice)
+            .map(MenuItemResponse::from)
+            .toList();
+    }
+
+    /** Mark an item as available or sold out. */
+    public MenuItemResponse setAvailability(Long id, boolean available) {
+        MenuItem item = getItem(id);
+        item.setAvailable(available);
+        return MenuItemResponse.from(item);   // saved when the transaction commits
     }
 }
